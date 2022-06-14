@@ -9,6 +9,7 @@ import ffmpeg
 import numpy as np
 import torch
 from PIL import Image
+import shutil
 
 
 def run(input):
@@ -32,28 +33,27 @@ def run(input):
     print("==================================================================")
     print(" video to image... ")
     print("==================================================================")
-    video2image(input, nb_frames, output_dir + "/image/")
+    video2image(input, nb_frames, output_dir)
 
     print()
     print("==================================================================")
     print(" image to depth... ")
     print("==================================================================")
-    image2depth(output_dir + "/image/", output_dir + "/depth/", False)
+    image2depth(output_dir, "DPT_Large")  # DPT_Large or DPT_Hybrid or MiDaS_small
 
     print()
     print("==================================================================")
     print(" merge to image and depth... ")
     print("==================================================================")
-    merge_image_depth(output_dir + "/image/", output_dir + "/depth/", output_dir + "/merged/")
+    merge_image_depth(output_dir)
 
     print()
     print("==================================================================")
     print(" depth to video... ")
     print("==================================================================")
-    depth2video(input, output_dir + "/depth/", output_dir + "/output.mp4", output_dir + "/output_sound.mp4", frame_rate)
+    depth2video(input, output_dir, "depth", frame_rate)
     print()
-    depth2video(input, output_dir + "/merged/", output_dir + "/output_merged.mp4",
-                output_dir + "/output_merged_sound.mp4", frame_rate)
+    depth2video(input, output_dir, "merged", frame_rate)
     print()
 
     end = time.time()
@@ -62,42 +62,55 @@ def run(input):
 
 
 def video2image(input, nb_frames, output_dir):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    image_dir = output_dir + "/image/"
+    depth_dir = output_dir + "/depth/"
+    merged_dir = output_dir + "/merged/"
 
-    if nb_frames == len(glob.glob(glob.escape(output_dir) + '*')):
+    if not os.path.exists(image_dir):
+        os.makedirs(image_dir)
+
+    if nb_frames == len(glob.glob(glob.escape(image_dir) + '*')):
         print("video2image already done.")
         return
 
-    stream = ffmpeg.input(input).output(output_dir + '%06d.jpg',
+    shutil.rmtree(depth_dir)
+    shutil.rmtree(merged_dir)
+
+    stream = ffmpeg.input(input).output(image_dir + '%06d.png',
                                         **{"start_number": 0, "qmin": 1, "qmax": 1, "qscale:v": 1})
     ffmpeg.run(stream)
 
     print("done.")
 
 
-def image2depth(input_dir, depth_dir, use_large_model):
-    if len(glob.glob(glob.escape(input_dir) + '/*')) == len(glob.glob(glob.escape(depth_dir) + '/*')):
+def image2depth(output_dir, model_type):
+    image_dir = output_dir + "/image/"
+    depth_dir = output_dir + "/depth/"
+    merged_dir = output_dir + "/merged/"
+
+    if not os.path.exists(depth_dir):
+        os.makedirs(depth_dir)
+
+    if len(glob.glob(glob.escape(image_dir) + '/*')) == len(glob.glob(glob.escape(depth_dir) + '/*')):
         print("image2depth already done.")
         return
 
-    if use_large_model:
-        midas = torch.hub.load('intel-isl/MiDaS', 'DPT_Large')
-    else:
-        midas = torch.hub.load('intel-isl/MiDaS', 'MiDaS_small')
+    shutil.rmtree(merged_dir)
+
+    midas = torch.hub.load('intel-isl/MiDaS', model_type)
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     midas.to(device)
     midas.eval()
 
-    midas_transforms = torch.hub.load('intel-isl/MiDaS', 'transforms')
+    midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
 
-    if use_large_model:
+    if model_type == "DPT_Large" or model_type == "DPT_Hybrid":
         transform = midas_transforms.dpt_transform
     else:
         transform = midas_transforms.small_transform
 
-    for file in sorted(glob.glob(glob.escape(input_dir) + '/*'), key=os.path.basename):
+    for file in sorted(glob.glob(glob.escape(image_dir) + '/*'), key=os.path.basename):
         output_file = depth_dir + "/" + Path(file).name
         if not os.path.exists(output_file):
             img = cv2.imread(file)
@@ -125,17 +138,21 @@ def image2depth(input_dir, depth_dir, use_large_model):
     print("done.")
 
 
-def merge_image_depth(input_dir, depth_dir, merged_dir):
+def merge_image_depth(output_dir):
+    image_dir = output_dir + "/image/"
+    depth_dir = output_dir + "/depth/"
+    merged_dir = output_dir + "/merged/"
+
     if not os.path.exists(merged_dir):
         os.makedirs(merged_dir)
 
-    input_dir_len = len(glob.glob(glob.escape(input_dir) + '/*'))
+    input_dir_len = len(glob.glob(glob.escape(image_dir) + '/*'))
     if input_dir_len == len(glob.glob(glob.escape(depth_dir) + '/*')) and \
             input_dir_len == len(glob.glob(glob.escape(merged_dir) + '/*')):
         print("merge_image_depth already done.")
         return
 
-    for file in sorted(glob.glob(glob.escape(input_dir) + '/*'), key=os.path.basename):
+    for file in sorted(glob.glob(glob.escape(image_dir) + '/*'), key=os.path.basename):
         depth_file = depth_dir + "/" + Path(file).name
         output_file = merged_dir + "/" + Path(file).name
         if not os.path.exists(output_file):
@@ -147,7 +164,11 @@ def merge_image_depth(input_dir, depth_dir, merged_dir):
     print("done.")
 
 
-def depth2video(input, depth_dir, output_file, output_sound_file, frame_rate):
+def depth2video(input, output_dir, output_name, frame_rate):
+    depth_dir = output_dir + "/" + output_name + "/"
+    output_file = output_dir + "/" + output_name + ".mp4"
+    output_sound_file = output_dir + "/" + output_name + "_sound.mp4"
+
     if not os.path.exists(output_file):
         stream = ffmpeg.input(depth_dir + '%06d.jpg').output(output_file,
                                                              **{"framerate": frame_rate, "vcodec": "libx264",
