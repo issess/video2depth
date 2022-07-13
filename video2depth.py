@@ -73,8 +73,10 @@ def video2image(input, nb_frames, output_dir):
         print("video2image already done.")
         return
 
-    shutil.rmtree(depth_dir)
-    shutil.rmtree(merged_dir)
+    if os.path.exists(depth_dir):
+        shutil.rmtree(depth_dir)
+    if os.path.exists(merged_dir):
+        shutil.rmtree(merged_dir)
 
     stream = ffmpeg.input(input).output(image_dir + '%06d.png',
                                         **{"start_number": 0, "qmin": 1, "qmax": 1, "qscale:v": 1})
@@ -95,7 +97,8 @@ def image2depth(output_dir, model_type):
         print("image2depth already done.")
         return
 
-    shutil.rmtree(merged_dir)
+    if os.path.exists(merged_dir):
+        shutil.rmtree(merged_dir)
 
     midas = torch.hub.load('intel-isl/MiDaS', model_type)
 

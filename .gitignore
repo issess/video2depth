@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+BoostingMonocularDepth/
+
+*.mp4
+*.mp4/
+.idea

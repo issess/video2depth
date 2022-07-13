@@ -8,7 +8,7 @@ $ pip install torch torchvision opencv-python timm Pillow numpy ffmpeg-python nu
 
 ## Usage
 ```bash
-$ python3 video2depth.py [filename]
+$ python3 video2depth.py --input [filename]
 ```
 
 ## output
