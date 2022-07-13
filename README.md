@@ -12,5 +12,7 @@ $ python3 video2depth.py --input [filename]
 ```
 
 ## output
- * output_sound.mp4 = depthmap video
- * output_merged.mp4 = original + depthmap video
+ * output_depth.mp4 = depthmap video
+ * output_depth_sound.mp4 = depthmap video + sound
+ * output_merged.mp4 = original + depthmap video 
+ * output_merged_sound.mp4 = original + depthmap video + sound

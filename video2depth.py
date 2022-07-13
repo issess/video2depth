@@ -51,9 +51,9 @@ def run(input):
     print("==================================================================")
     print(" depth to video... ")
     print("==================================================================")
-    depth2video(input, output_dir, "depth", frame_rate)
+    depth2video(input, output_dir, "output_depth", frame_rate)
     print()
-    depth2video(input, output_dir, "merged", frame_rate)
+    depth2video(input, output_dir, "output_merged", frame_rate)
     print()
 
     end = time.time()
@@ -162,6 +162,7 @@ def merge_image_depth(output_dir):
             image_file = Image.open(file)
             depth_file = Image.open(depth_file)
             get_concat_v(image_file, depth_file).save(output_file)
+            # get_concat_h(image_file, depth_file).save(output_file)
             print("Merged: " + Path(file).name)
 
     print("done.")
@@ -173,7 +174,7 @@ def depth2video(input, output_dir, output_name, frame_rate):
     output_sound_file = output_dir + "/" + output_name + "_sound.mp4"
 
     if not os.path.exists(output_file):
-        stream = ffmpeg.input(depth_dir + '%06d.jpg').output(output_file,
+        stream = ffmpeg.input(depth_dir + '%06d.png').output(output_file,
                                                              **{"framerate": frame_rate, "vcodec": "libx264",
                                                                 "pix_fmt": "yuv420p"})
         ffmpeg.run(stream)
@@ -199,6 +200,11 @@ def get_concat_v(image1, image2):
     dst.paste(image2, (0, image1.height))
     return dst
 
+def get_concat_h(image1, image2):
+    dst = Image.new('RGB', (image1.width + image1.width, image1.height))
+    dst.paste(image1, (0, 0))
+    dst.paste(image2, (image1.width, 0))
+    return dst
 
 if __name__ == "__main__":
     # Adding necessary input arguments
