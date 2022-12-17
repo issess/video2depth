@@ -10,9 +10,50 @@ import numpy as np
 import torch
 from PIL import Image
 import shutil
+import shutil
 
 
-def run(input):
+def runImage(input):
+    output_dir = Path(input).stem
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    start = time.time()
+    
+    print("==================================================================")
+    print(" copy to image... ")
+    print("==================================================================")
+    copy2image(input, output_dir)
+    
+    print()
+    print("==================================================================")
+    print(" image to depth... ")
+    print("==================================================================")
+    image2depth(output_dir, "DPT_Large")  # DPT_Large or DPT_Hybrid or MiDaS_small
+
+    print()
+    print("==================================================================")
+    print(" merge to image and depth... ")
+    print("==================================================================")
+    merge_image_depth(output_dir)
+    
+    end = time.time()
+    print()
+    print("elapsed time", end - start)
+
+def copy2image(input, output_dir):
+    image_dir = output_dir + "/image/"
+
+    if not os.path.exists(image_dir):
+        os.makedirs(image_dir)
+
+    if len(glob.glob(glob.escape(image_dir) + '*')) == 1:
+        print("copy2image already done.")
+        return
+    
+    shutil.copy(input, image_dir)
+
+def runVideo(input):
     output_dir = Path(input).stem
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -51,9 +92,9 @@ def run(input):
     print("==================================================================")
     print(" depth to video... ")
     print("==================================================================")
-    depth2video(input, output_dir, "output_depth", frame_rate)
+    depth2video(input, output_dir, "depth", frame_rate)
     print()
-    depth2video(input, output_dir, "output_merged", frame_rate)
+    depth2video(input, output_dir, "merged", frame_rate)
     print()
 
     end = time.time()
@@ -64,19 +105,16 @@ def run(input):
 def video2image(input, nb_frames, output_dir):
     image_dir = output_dir + "/image/"
     depth_dir = output_dir + "/depth/"
-    merged_dir = output_dir + "/merged/"
 
     if not os.path.exists(image_dir):
         os.makedirs(image_dir)
 
-    if nb_frames == len(glob.glob(glob.escape(image_dir) + '*')):
+    if nb_frames <= len(glob.glob(glob.escape(image_dir) + '*')):
         print("video2image already done.")
         return
 
     if os.path.exists(depth_dir):
         shutil.rmtree(depth_dir)
-    if os.path.exists(merged_dir):
-        shutil.rmtree(merged_dir)
 
     stream = ffmpeg.input(input).output(image_dir + '%06d.png',
                                         **{"start_number": 0, "qmin": 1, "qmax": 1, "qscale:v": 1})
@@ -132,10 +170,19 @@ def image2depth(output_dir, model_type):
                 ).squeeze()
 
             output = prediction.cpu().numpy()
+           
+            depth_min = np.min(output)
+            depth_max = np.max(output)
 
-            output_normalized = (output * 255 / np.max(output)).astype('uint8')
-            output_image = Image.fromarray(output_normalized)
-            output_image_converted = output_image.convert('RGB').save(output_file)
+            max_val = (2**(8))-1
+
+            if depth_max - depth_min > np.finfo("float").eps:
+                out = max_val * (output - depth_min) / (depth_max - depth_min)
+            else:
+                out = np.zeros(output.shape, dtype=output.type)
+
+            cv2.imwrite(output_file, out.astype("uint8"))
+        
             print('Converted: ' + Path(file).name)
 
     print("done.")
@@ -170,8 +217,8 @@ def merge_image_depth(output_dir):
 
 def depth2video(input, output_dir, output_name, frame_rate):
     depth_dir = output_dir + "/" + output_name + "/"
-    output_file = output_dir + "/" + output_name + ".mp4"
-    output_sound_file = output_dir + "/" + output_name + "_sound.mp4"
+    output_file = output_dir + "/output_" + output_name + ".mp4"
+    output_sound_file = output_dir + "/output_" + output_name + "_sound.mp4"
 
     if not os.path.exists(output_file):
         stream = ffmpeg.input(depth_dir + '%06d.png').output(output_file,
@@ -209,8 +256,12 @@ def get_concat_h(image1, image2):
 if __name__ == "__main__":
     # Adding necessary input arguments
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--input", type=str,
-                        help="input video file")
+    parser.add_argument("-v","--video", type=str, help="input video file")
+    parser.add_argument("-i","--image", type=str, help="input image file")
     args = parser.parse_args()
-    print(args)
-    run(args.input)
+    if args.video is not None:
+        runVideo(args.video)
+    elif args.image is not None:
+        runImage(args.image)
+    else:
+        parser.print_usage()
