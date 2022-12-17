@@ -170,18 +170,11 @@ def image2depth(output_dir, model_type):
                 ).squeeze()
 
             output = prediction.cpu().numpy()
-           
-            depth_min = np.min(output)
-            depth_max = np.max(output)
-
-            max_val = (2**(8))-1
-
-            if depth_max - depth_min > np.finfo("float").eps:
-                out = max_val * (output - depth_min) / (depth_max - depth_min)
-            else:
-                out = np.zeros(output.shape, dtype=output.type)
-
-            cv2.imwrite(output_file, out.astype("uint8"))
+            
+            depth_map = cv2.normalize(output, None,0,1,norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_64F)
+            depth_map = (depth_map*255).astype(np.uint8)
+            #depth_map = cv2.applyColorMap(depth_map,cv2.COLORMAP_MAGMA)
+            cv2.imwrite(output_file, depth_map)
         
             print('Converted: ' + Path(file).name)
 
