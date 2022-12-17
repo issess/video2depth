@@ -8,7 +8,6 @@ import cv2
 import ffmpeg
 import numpy as np
 import torch
-from PIL import Image
 import shutil
 import shutil
 
@@ -180,7 +179,6 @@ def image2depth(output_dir, model_type):
 
     print("done.")
 
-
 def merge_image_depth(output_dir):
     image_dir = output_dir + "/image/"
     depth_dir = output_dir + "/depth/"
@@ -199,14 +197,29 @@ def merge_image_depth(output_dir):
         depth_file = depth_dir + "/" + Path(file).name
         output_file = merged_dir + "/" + Path(file).name
         if not os.path.exists(output_file):
-            image_file = Image.open(file)
-            depth_file = Image.open(depth_file)
-            get_concat_v(image_file, depth_file).save(output_file)
-            # get_concat_h(image_file, depth_file).save(output_file)
+            image_file = cv2.imread(file)
+            depth_file = cv2.imread(depth_file)
+            
+            height1, width1, _ = image_file.shape
+            height2, width2, _ = depth_file.shape
+            
+            max_width = max(width1, width2)
+            max_height = max(height1, height2)                        
+            
+            # horizontal
+            # result_image = np.zeros((max_height, width1 + width2, 3), dtype=np.uint8)
+            # result_image[0:height1, 0:width1] = image_file
+            # result_image[0:height2, width1:width1+width2] = depth_file
+            
+            # vertical
+            result_image = np.zeros((height1+height2, max_width, 3), dtype=np.uint8)
+            result_image[0:height1, 0:width1] = image_file
+            result_image[height1:height1+height2, 0:width2] = depth_file
+            cv2.imwrite(output_file, result_image)
+
             print("Merged: " + Path(file).name)
 
     print("done.")
-
 
 def depth2video(input, output_dir, output_name, frame_rate):
     depth_dir = output_dir + "/" + output_name + "/"
@@ -232,19 +245,6 @@ def depth2video(input, output_dir, output_name, frame_rate):
         print(Path(output_sound_file).name + " done.")
     else:
         print(Path(output_sound_file).name + " already done.")
-
-
-def get_concat_v(image1, image2):
-    dst = Image.new('RGB', (image1.width, image1.height + image2.height))
-    dst.paste(image1, (0, 0))
-    dst.paste(image2, (0, image1.height))
-    return dst
-
-def get_concat_h(image1, image2):
-    dst = Image.new('RGB', (image1.width + image1.width, image1.height))
-    dst.paste(image1, (0, 0))
-    dst.paste(image2, (image1.width, 0))
-    return dst
 
 if __name__ == "__main__":
     # Adding necessary input arguments
