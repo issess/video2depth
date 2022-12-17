@@ -13,7 +13,7 @@ import shutil
 
 
 def runImage(input):
-    output_dir = Path(input).stem
+    output_dir = "out/" + Path(input).stem
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -53,7 +53,7 @@ def copy2image(input, output_dir):
     shutil.copy(input, image_dir)
 
 def runVideo(input):
-    output_dir = Path(input).stem
+    output_dir = "out/" + Path(input).stem
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 

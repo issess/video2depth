@@ -132,4 +132,7 @@ BoostingMonocularDepth/
 
 *.mp4
 *.mp4/
+*.png
+*.jpg
 .idea
+out/
