@@ -13,6 +13,12 @@ Depthmap video generator using machine learning
 | ZoeDepth | `zoedepth` | Metric depth (real-world distances) |
 | Marigold | `marigold` | Diffusion-based, highest quality, slow |
 
+## Sample Results
+
+| Original | MiDaS | Depth Anything V2 | ZoeDepth | Marigold |
+|:--------:|:-----:|:------------------:|:--------:|:--------:|
+| ![Original](result_image/original.png) | ![MiDaS](result_image/midas.png) | ![Depth Anything V2](result_image/depth_anything_v2.png) | ![ZoeDepth](result_image/zoedepth.png) | ![Marigold](result_image/marigold.png) |
+
 ## Requirements
 
 - Python 3
