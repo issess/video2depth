@@ -136,3 +136,9 @@ BoostingMonocularDepth/
 *.jpg
 .idea
 out/
+
+# Allow sample files
+!sample_image/
+!sample_image/**
+!sample_video/
+!sample_video/**

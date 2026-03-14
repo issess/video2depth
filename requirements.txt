@@ -1,0 +1,7 @@
+torch
+torchvision
+opencv-python
+timm
+Pillow
+numpy
+ffmpeg-python
