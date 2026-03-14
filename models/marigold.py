@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import torch
+from PIL import Image
 
 from models.base import DepthModel
 
@@ -30,11 +31,12 @@ class MarigoldModel(DepthModel):
         ).to(self.device)
 
     def predict(self, img_rgb: np.ndarray) -> np.ndarray:
-        from PIL import Image
-
         pil_img = Image.fromarray(img_rgb)
         result = self.pipe(pil_img, num_inference_steps=4)
-        depth = result.prediction[0, 0].cpu().numpy()
+        prediction = result.prediction
+        if not isinstance(prediction, np.ndarray):
+            prediction = prediction.cpu().numpy()
+        depth = prediction.squeeze()
         depth_map = cv2.normalize(depth, None, 0, 1,
                                   norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_64F)
         return (depth_map * 255).astype(np.uint8)

@@ -10,8 +10,14 @@ import numpy as np
 import shutil
 
 
-def runImage(input, model):
-    output_dir = "out/" + Path(input).stem
+def default_output_dir(input_path, output_dir=None):
+    if output_dir is not None:
+        return output_dir
+    return "out/" + Path(input_path).stem
+
+
+def runImage(input, model, output_dir=None):
+    output_dir = default_output_dir(input, output_dir)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -50,8 +56,8 @@ def copy2image(input, output_dir):
     
     shutil.copy(input, image_dir)
 
-def runVideo(input, model):
-    output_dir = "out/" + Path(input).stem
+def runVideo(input, model, output_dir=None):
+    output_dir = default_output_dir(input, output_dir)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -103,8 +109,7 @@ def video2image(input, nb_frames, output_dir):
     image_dir = output_dir + "/image/"
     depth_dir = output_dir + "/depth/"
 
-    if not os.path.exists(image_dir):
-        os.makedirs(image_dir)
+    os.makedirs(image_dir, exist_ok=True)
 
     if nb_frames <= len(glob.glob(glob.escape(image_dir) + '*')):
         print("video2image already done.")
@@ -197,17 +202,34 @@ def depth2video(input, output_dir, output_name, frame_rate):
     depth_dir = output_dir + "/" + output_name + "/"
     output_file = output_dir + "/output_" + output_name + ".mp4"
     output_sound_file = output_dir + "/output_" + output_name + "_sound.mp4"
+    video_codecs = ("libx264", "libopenh264", "mpeg4")
+    probe = ffmpeg.probe(input)
+    has_audio = any(stream.get("codec_type") == "audio" for stream in probe.get("streams", []))
 
     if not os.path.exists(output_file):
-        stream = ffmpeg.input(depth_dir + '%06d.png').output(output_file,
-                                                             **{"framerate": frame_rate, "vcodec": "libx264",
-                                                                "pix_fmt": "yuv420p"})
-        ffmpeg.run(stream)
-        print(Path(output_file).name + " done.")
+        last_error = None
+        for codec in video_codecs:
+            try:
+                stream = ffmpeg.input(depth_dir + '%06d.png').output(
+                    output_file,
+                    **{"framerate": frame_rate, "vcodec": codec, "pix_fmt": "yuv420p"}
+                )
+                ffmpeg.run(stream)
+                print(Path(output_file).name + f" done. codec={codec}")
+                last_error = None
+                break
+            except ffmpeg.Error as exc:
+                last_error = exc
+                if os.path.exists(output_file):
+                    os.remove(output_file)
+        if last_error is not None:
+            raise last_error
     else:
         print(Path(output_file).name + " already done.")
 
-    if not os.path.exists(output_sound_file):
+    if not has_audio:
+        print(Path(output_sound_file).name + " skipped (no audio stream).")
+    elif not os.path.exists(output_sound_file):
         output_audio = ffmpeg.input(input).audio
         output_video = ffmpeg.input(output_file)
         stream = ffmpeg.output(output_audio, output_video, output_sound_file,
@@ -226,13 +248,14 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--image", type=str, help="input image file")
     parser.add_argument("-m", "--model", type=str, default=DEFAULT_MODEL,
                         help="depth model: " + ", ".join(list_models()))
+    parser.add_argument("-o", "--output-dir", type=str, help="output directory")
     args = parser.parse_args()
 
     model = get_model(args.model)
 
     if args.video is not None:
-        runVideo(args.video, model)
+        runVideo(args.video, model, args.output_dir)
     elif args.image is not None:
-        runImage(args.image, model)
+        runImage(args.image, model, args.output_dir)
     else:
         parser.print_usage()

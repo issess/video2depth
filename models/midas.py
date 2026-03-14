@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import numpy as np
 import torch
@@ -6,6 +8,7 @@ from models.base import DepthModel
 
 
 class MiDaSModel(DepthModel):
+    LOCAL_HUB_REPO = os.path.expanduser("~/.cache/torch/hub/intel-isl_MiDaS_master")
 
     def __init__(self, model_type="DPT_Large", device=None):
         super().__init__(device)
@@ -17,11 +20,14 @@ class MiDaSModel(DepthModel):
         return f"MiDaS ({self.model_type})"
 
     def load(self):
-        self.model = torch.hub.load('intel-isl/MiDaS', self.model_type)
+        repo = self.LOCAL_HUB_REPO if os.path.exists(self.LOCAL_HUB_REPO) else "intel-isl/MiDaS"
+        source = "local" if repo == self.LOCAL_HUB_REPO else "github"
+
+        self.model = torch.hub.load(repo, self.model_type, source=source)
         self.model.to(self.device)
         self.model.eval()
 
-        midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
+        midas_transforms = torch.hub.load(repo, "transforms", source=source)
         if self.model_type in ("DPT_Large", "DPT_Hybrid"):
             self.transform = midas_transforms.dpt_transform
         else:
