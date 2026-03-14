@@ -142,3 +142,5 @@ out/
 !sample_image/**
 !sample_video/
 !sample_video/**
+!result_image/
+!result_image/**
