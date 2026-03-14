@@ -41,6 +41,21 @@ $ python3 video2depth.py -v [filename] -m depth_anything_v2
 $ python3 video2depth.py -i [filename] -m marigold
 ```
 
+## Testing
+
+```bash
+# Run all tests
+$ python3 -m pytest test_video2depth.py -v
+
+# Run a specific test class
+$ python3 -m pytest test_video2depth.py::TestModelRegistry -v
+
+# Run a single test
+$ python3 -m pytest test_video2depth.py::TestVideo2Image::test_extracts_frames -v
+```
+
+Sample files in `sample_image/` and `sample_video/` are used by the tests.
+
 ## Output
 
 Results are saved to `out/<input_filename>/`:
