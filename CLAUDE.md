@@ -13,13 +13,13 @@ Video2Depth generates depth maps from videos and images using pluggable depth es
 pip install torch torchvision opencv-python timm Pillow numpy ffmpeg-python
 
 # Run on video (default model: midas_large)
-python3 video2depth.py --video [filename]
+python video2depth.py --video [filename]
 
 # Run on image
-python3 video2depth.py --image [filename]
+python video2depth.py --image [filename]
 
 # Specify model
-python3 video2depth.py -v [filename] -m depth_anything_v2
+python video2depth.py -v [filename] -m depth_anything_v2
 ```
 
 There is no test suite or build system. FFmpeg must be installed on the system.
